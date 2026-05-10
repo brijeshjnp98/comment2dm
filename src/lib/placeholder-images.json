@@ -1,3 +1,22 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero-dashboard",
+      "description": "A clean modern dashboard interface",
+      "imageUrl": "https://picsum.photos/seed/dashboard/1200/800",
+      "imageHint": "saas dashboard"
+    },
+    {
+      "id": "instagram-logo",
+      "description": "Instagram professional logo",
+      "imageUrl": "https://picsum.photos/seed/instagram/200/200",
+      "imageHint": "social media"
+    },
+    {
+      "id": "avatar-user",
+      "description": "User profile avatar",
+      "imageUrl": "https://picsum.photos/seed/user/100/100",
+      "imageHint": "person portrait"
+    }
+  ]
 }
