@@ -1,9 +1,8 @@
-
 "use client"
 
 import * as React from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { 
   LayoutDashboard, 
   Zap, 
@@ -15,7 +14,9 @@ import {
   Bell,
   Menu,
   ChevronRight,
-  Sparkles
+  Sparkles,
+  Loader2,
+  Shield
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -38,6 +39,7 @@ import {
 } from "@/components/ui/sidebar"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
+import { useAuth } from "@/lib/auth-provider"
 
 const navItems = [
   {
@@ -76,6 +78,27 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
+  const router = useRouter()
+  const { user, appUser, loading, signOut } = useAuth()
+
+  React.useEffect(() => {
+    if (!loading && !user) {
+      router.push("/signin")
+    }
+  }, [user, loading, router])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="size-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  if (!user || !appUser) return null
+
+  const initials = appUser.name?.split(" ").map(n => n[0]).join("").toUpperCase() || "U"
+  const dmPercent = Math.round((appUser.dmSentThisMonth / appUser.dmQuota) * 100)
 
   return (
     <SidebarProvider>
@@ -115,6 +138,20 @@ export default function DashboardLayout({
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
+                {appUser.role === "admin" && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton 
+                      asChild 
+                      isActive={pathname.startsWith("/dashboard/admin")}
+                      tooltip="Admin Panel"
+                    >
+                      <Link href="/dashboard/admin">
+                        <Shield className="size-4" />
+                        <span>Admin Panel</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
               </SidebarMenu>
             </SidebarGroup>
             <SidebarGroup>
@@ -144,13 +181,17 @@ export default function DashboardLayout({
                   <div className="rounded-xl bg-primary/10 p-4 border border-primary/20">
                     <div className="flex items-center gap-2 mb-2 text-primary">
                       <Sparkles className="size-4" />
-                      <span className="text-xs font-bold uppercase tracking-wider">Growth Plan</span>
+                      <span className="text-xs font-bold uppercase tracking-wider capitalize">
+                        {appUser.plan} Plan
+                      </span>
                     </div>
                     <div className="space-y-2">
                       <div className="h-1.5 w-full bg-primary/20 rounded-full overflow-hidden">
-                        <div className="h-full bg-primary" style={{ width: '45%' }}></div>
+                        <div className="h-full bg-primary" style={{ width: `${Math.min(dmPercent, 100)}%` }}></div>
                       </div>
-                      <p className="text-[10px] text-muted-foreground">450 / 1000 DMs this month</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {appUser.dmSentThisMonth} / {appUser.dmQuota} DMs this month
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -158,14 +199,20 @@ export default function DashboardLayout({
               <SidebarMenuItem>
                 <SidebarMenuButton size="lg">
                   <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage src="https://picsum.photos/seed/user1/100" />
-                    <AvatarFallback>JD</AvatarFallback>
+                    <AvatarImage src={appUser.instagramProfilePic || `https://picsum.photos/seed/${user.uid}/100`} />
+                    <AvatarFallback>{initials}</AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold text-foreground">John Doe</span>
-                    <span className="truncate text-xs text-muted-foreground">john@example.com</span>
+                    <span className="truncate font-semibold text-foreground">{appUser.name}</span>
+                    <span className="truncate text-xs text-muted-foreground">{appUser.email}</span>
                   </div>
                   <ChevronRight className="ml-auto size-4" />
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton onClick={() => signOut()} className="text-destructive hover:text-destructive">
+                  <LogOut className="size-4" />
+                  <span>Sign Out</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -184,10 +231,12 @@ export default function DashboardLayout({
                 <Bell className="size-5" />
                 <span className="absolute top-2 right-2 flex h-2 w-2 rounded-full bg-primary"></span>
               </Button>
-              <div className="flex items-center gap-2 bg-secondary px-3 py-1.5 rounded-full border border-border">
-                <Instagram className="size-4 text-[#E1306C]" />
-                <span className="text-xs font-medium">@johndoe_official</span>
-              </div>
+              {appUser.instagramConnected && appUser.instagramHandle && (
+                <div className="flex items-center gap-2 bg-secondary px-3 py-1.5 rounded-full border border-border">
+                  <Instagram className="size-4 text-[#E1306C]" />
+                  <span className="text-xs font-medium">@{appUser.instagramHandle}</span>
+                </div>
+              )}
             </div>
           </header>
           <main className="flex-1 p-6 overflow-y-auto">

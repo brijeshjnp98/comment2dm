@@ -1,9 +1,56 @@
-
 import Link from "next/link"
 import { Zap, Shield, Sparkles, MessageSquare, Instagram, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { getAdminDb } from "@/lib/firebase-admin"
 
-export default function LandingPage() {
+async function getPlans() {
+  try {
+    const dbAdmin = getAdminDb()
+    const plansSnap = await dbAdmin.collection("plans").get()
+    
+    if (!plansSnap.empty) {
+      const list = plansSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any))
+      const order: any = { free: 0, basic: 1, pro: 2 }
+      list.sort((a: any, b: any) => (order[a.key] ?? 99) - (order[b.key] ?? 99))
+      return list
+    }
+  } catch (e) {
+    console.error("Failed to fetch plans on landing page, falling back to static defaults", e)
+  }
+  
+  // Fallback defaults in case admin SDK isn't initialized or running locally
+  return [
+    {
+      name: "Free",
+      price: "$0",
+      monthly: "/mo",
+      features: ["1,000 DMs per month", "3 Active Automations", "Basic Analytics"],
+      quota: 1000,
+      key: "free",
+    },
+    {
+      name: "Basic",
+      price: "$10",
+      monthly: "/mo",
+      features: ["2,500 DMs per month", "Unlimited Automations", "AI Suggestion Tool", "Advanced Analytics"],
+      quota: 2500,
+      popular: true,
+      key: "basic",
+    },
+    {
+      name: "Pro",
+      price: "$25",
+      monthly: "/mo",
+      features: ["10,000 DMs per month", "Priority Delivery", "API Access", "VIP Support"],
+      quota: 10000,
+      key: "pro",
+    }
+  ]
+}
+
+export default async function LandingPage() {
+  const plans = await getPlans()
+
   return (
     <div className="flex flex-col min-h-screen bg-[#F2F1F8]">
       <header className="px-6 lg:px-12 h-20 flex items-center justify-between sticky top-0 bg-[#F2F1F8]/80 backdrop-blur-md z-50">
@@ -98,56 +145,56 @@ export default function LandingPage() {
             </div>
             
             <div className="grid md:grid-cols-3 gap-8">
-              <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 flex flex-col">
-                <div className="mb-6">
-                  <h3 className="text-lg font-bold">Starter</h3>
-                  <div className="flex items-baseline gap-1 mt-2">
-                    <span className="text-4xl font-headline font-bold">$5</span>
-                    <span className="text-slate-500">/mo</span>
+              {plans.map((plan: any) => {
+                return (
+                  <div 
+                    key={plan.name} 
+                    className={`p-8 rounded-3xl shadow-sm border border-slate-100 flex flex-col relative transition-all duration-300 hover:shadow-lg ${
+                      plan.popular 
+                        ? 'bg-primary text-white scale-105 z-10 shadow-2xl shadow-primary/20' 
+                        : 'bg-white text-slate-900'
+                    }`}
+                  >
+                    {plan.popular && (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white text-primary px-4 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shadow">
+                        Most Popular
+                      </div>
+                    )}
+                    <div className="mb-6">
+                      <h3 className="text-lg font-bold">{plan.name}</h3>
+                      <div className="flex items-baseline gap-1 mt-2">
+                        <span className="text-4xl font-headline font-bold">{plan.price}</span>
+                        <span className={plan.popular ? 'text-primary-foreground/85 text-xs' : 'text-slate-500 text-xs'}>
+                          {plan.monthly}
+                        </span>
+                      </div>
+                      <p className={`text-[10px] mt-1 ${plan.popular ? 'text-primary-foreground/75' : 'text-slate-400'}`}>
+                        Up to {plan.quota.toLocaleString()} messages/mo
+                      </p>
+                    </div>
+                    <ul className="space-y-4 mb-8 flex-1">
+                      {plan.features?.map((f: string, i: number) => (
+                        <li key={i} className="flex items-center gap-2 text-sm">
+                          <MessageSquare className={`size-4 shrink-0 ${plan.popular ? 'text-white' : 'text-primary'}`} /> 
+                          <span className={plan.popular ? 'text-white/90' : 'text-slate-600'}>{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <Button 
+                      className={`w-full rounded-full py-6 font-semibold shadow-md ${
+                        plan.popular 
+                          ? 'bg-white text-primary hover:bg-white/95' 
+                          : 'bg-primary text-white hover:bg-primary/95'
+                      }`} 
+                      asChild
+                    >
+                      <Link href="/dashboard">
+                        {plan.key === "free" ? "Get Started" : `Go ${plan.name}`}
+                      </Link>
+                    </Button>
                   </div>
-                </div>
-                <ul className="space-y-4 mb-8 flex-1">
-                  <li className="flex items-center gap-2 text-sm text-slate-600"><MessageSquare className="size-4 text-primary" /> 1,000 DMs per month</li>
-                  <li className="flex items-center gap-2 text-sm text-slate-600"><Zap className="size-4 text-primary" /> 3 Active Automations</li>
-                  <li className="flex items-center gap-2 text-sm text-slate-600"><Shield className="size-4 text-primary" /> Basic Analytics</li>
-                </ul>
-                <Button className="w-full rounded-full py-6" variant="outline" asChild><Link href="/dashboard">Get Started</Link></Button>
-              </div>
-              
-              <div className="bg-primary text-white p-8 rounded-3xl shadow-2xl shadow-primary/20 flex flex-col scale-105 z-10">
-                <div className="absolute top-4 right-8 bg-white/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Most Popular</div>
-                <div className="mb-6">
-                  <h3 className="text-lg font-bold">Growth</h3>
-                  <div className="flex items-baseline gap-1 mt-2">
-                    <span className="text-4xl font-headline font-bold">$10</span>
-                    <span className="text-primary-foreground/80">/mo</span>
-                  </div>
-                </div>
-                <ul className="space-y-4 mb-8 flex-1">
-                  <li className="flex items-center gap-2 text-sm"><MessageSquare className="size-4" /> 2,500 DMs per month</li>
-                  <li className="flex items-center gap-2 text-sm"><Zap className="size-4" /> Unlimited Automations</li>
-                  <li className="flex items-center gap-2 text-sm"><Sparkles className="size-4" /> AI Suggestion Tool</li>
-                  <li className="flex items-center gap-2 text-sm"><Shield className="size-4" /> Advanced Analytics</li>
-                </ul>
-                <Button className="w-full rounded-full py-6 bg-white text-primary hover:bg-white/90" asChild><Link href="/dashboard">Go Pro</Link></Button>
-              </div>
-
-              <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 flex flex-col">
-                <div className="mb-6">
-                  <h3 className="text-lg font-bold">Unlimited</h3>
-                  <div className="flex items-baseline gap-1 mt-2">
-                    <span className="text-4xl font-headline font-bold">$25</span>
-                    <span className="text-slate-500">/mo</span>
-                  </div>
-                </div>
-                <ul className="space-y-4 mb-8 flex-1">
-                  <li className="flex items-center gap-2 text-sm text-slate-600"><MessageSquare className="size-4 text-primary" /> Unlimited DMs</li>
-                  <li className="flex items-center gap-2 text-sm text-slate-600"><Zap className="size-4 text-primary" /> Priority Delivery</li>
-                  <li className="flex items-center gap-2 text-sm text-slate-600"><Sparkles className="size-4 text-primary" /> API Access</li>
-                  <li className="flex items-center gap-2 text-sm text-slate-600"><Shield className="size-4 text-primary" /> VIP Support</li>
-                </ul>
-                <Button className="w-full rounded-full py-6" variant="outline" asChild><Link href="/dashboard">Contact Us</Link></Button>
-              </div>
+                )
+              })}
             </div>
           </div>
         </section>
@@ -159,7 +206,7 @@ export default function LandingPage() {
             <Zap className="size-6 text-primary" />
             <span className="text-xl font-headline font-bold">Comment2DM</span>
           </div>
-          <p className="text-sm text-slate-500">© 2024 Comment2DM. All rights reserved.</p>
+          <p className="text-sm text-slate-500">© {new Date().getFullYear()} Comment2DM. All rights reserved.</p>
           <div className="flex gap-6 text-sm text-slate-500">
             <Link className="hover:text-primary transition-colors" href="#">Privacy</Link>
             <Link className="hover:text-primary transition-colors" href="#">Terms</Link>

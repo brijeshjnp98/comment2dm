@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -12,7 +11,8 @@ import {
   PlayCircle,
   ExternalLink,
   MessageCircle,
-  Hash
+  Hash,
+  Loader2
 } from "lucide-react"
 import {
   Card,
@@ -33,8 +33,61 @@ import {
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
+import { ScanButton } from "./scan-button"
+import { useAuth } from "@/lib/auth-provider"
+import { getAutomations, toggleAutomation, deleteAutomation, AutomationData } from "@/lib/firestore-service"
 
 export default function AutomationsPage() {
+  const { appUser } = useAuth()
+  const [automations, setAutomations] = React.useState<AutomationData[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [search, setSearch] = React.useState("")
+
+  React.useEffect(() => {
+    async function loadData() {
+      if (!appUser) return
+      try {
+        const data = await getAutomations(appUser.uid)
+        setAutomations(data)
+      } catch (err) {
+        console.error("Failed to load automations", err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadData()
+  }, [appUser])
+
+  async function handleToggle(id: string, currentActive: boolean) {
+    try {
+      await toggleAutomation(id, !currentActive)
+      setAutomations(prev => prev.map(a => a.id === id ? { ...a, active: !currentActive } : a))
+    } catch (err) {
+      console.error("Failed to toggle automation", err)
+    }
+  }
+
+  async function handleDelete(id: string) {
+    try {
+      await deleteAutomation(id)
+      setAutomations(prev => prev.filter(a => a.id !== id))
+    } catch (err) {
+      console.error("Failed to delete automation", err)
+    }
+  }
+
+  const filtered = automations.filter(a => 
+    a.keywords.some(k => k.toLowerCase().includes(search.toLowerCase()))
+  )
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="size-6 animate-spin text-primary" />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -46,9 +99,11 @@ export default function AutomationsPage() {
           <div className="relative">
             <Input 
               placeholder="Search triggers..." 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               className="pl-9 bg-white border-none shadow-sm focus-visible:ring-1"
             />
-            <Zap className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <Hash className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           </div>
           <Button className="bg-primary rounded-full px-6" asChild>
             <Link href="/dashboard/automations/new">
@@ -58,20 +113,18 @@ export default function AutomationsPage() {
         </div>
       </div>
 
+      {/* Scan Comments Button */}
+      <ScanButton />
+
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {[
-          { keyword: "link", count: 842, active: true, message: "Here is the special link you requested! Enjoy 20% off with code SAVE20.", url: "https://shop.com/sale" },
-          { keyword: "price", count: 212, active: true, message: "Our prices start from $29.99 for the basic kit. Check out the full catalog here!", url: "https://shop.com/pricing" },
-          { keyword: "details", count: 124, active: false, message: "Check out our detailed guide on how to get started with Comment2DM.", url: "https://shop.com/guide" },
-          { keyword: "offer", count: 45, active: true, message: "This limited time offer expires in 24 hours. Grab it now!", url: "https://shop.com/offer" },
-        ].map((item, i) => (
-          <Card key={i} className="border-none shadow-md bg-white hover:shadow-lg transition-all group">
+        {filtered.map((item) => (
+          <Card key={item.id} className="border-none shadow-md bg-white hover:shadow-lg transition-all group">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <div className="flex items-center gap-2">
                 <div className={`p-2 rounded-lg ${item.active ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
                   <Hash className="size-4" />
                 </div>
-                <CardTitle className="text-lg font-bold">"{item.keyword}"</CardTitle>
+                <CardTitle className="text-lg font-bold capitalize">"{item.keywords.join(", ")}"</CardTitle>
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -81,22 +134,20 @@ export default function AutomationsPage() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                  <DropdownMenuItem>
-                    <Edit2 className="mr-2 size-4" /> Edit
+                  <DropdownMenuItem asChild>
+                    <Link href={`/dashboard/automations/${item.id}/edit`}>
+                      <Edit2 className="mr-2 size-4" /> Edit
+                    </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleToggle(item.id!, item.active)}>
                     {item.active ? (
-                      <>
-                        <PauseCircle className="mr-2 size-4" /> Pause
-                      </>
+                      <><PauseCircle className="mr-2 size-4" /> Pause</>
                     ) : (
-                      <>
-                        <PlayCircle className="mr-2 size-4" /> Resume
-                      </>
+                      <><PlayCircle className="mr-2 size-4" /> Resume</>
                     )}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive">
+                  <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(item.id!)}>
                     <Trash2 className="mr-2 size-4" /> Delete
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -106,13 +157,13 @@ export default function AutomationsPage() {
               <div className="flex items-start gap-3 bg-secondary/30 p-3 rounded-xl">
                 <MessageCircle className="size-4 text-muted-foreground mt-1 shrink-0" />
                 <p className="text-sm text-foreground line-clamp-3 leading-relaxed italic">
-                  "{item.message}"
+                  "{item.replyMessage}"
                 </p>
               </div>
               
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <ExternalLink className="size-3" />
-                <span className="truncate">{item.url}</span>
+                <span className="truncate">{item.targetUrl}</span>
               </div>
 
               <div className="flex items-center justify-between pt-2">
@@ -120,28 +171,26 @@ export default function AutomationsPage() {
                   <Badge variant={item.active ? "default" : "secondary"}>
                     {item.active ? "Active" : "Paused"}
                   </Badge>
-                  <span className="text-xs text-muted-foreground font-medium">{item.count} sent</span>
+                  <span className="text-xs text-muted-foreground font-medium">{item.totalSent} sent</span>
                 </div>
-                <Button variant="ghost" size="sm" className="text-xs h-7 hover:bg-primary/5 hover:text-primary">
-                  View Logs
-                </Button>
               </div>
             </CardContent>
           </Card>
         ))}
         
-        {/* Empty State / Add New Card */}
-        <Link href="/dashboard/automations/new" className="h-full">
-          <div className="h-full min-h-[220px] rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-3 p-6 group hover:border-primary/50 transition-colors bg-white/50">
-            <div className="size-12 rounded-full bg-secondary flex items-center justify-center group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-              <Plus className="size-6" />
+        {filtered.length === 0 && (
+          <Link href="/dashboard/automations/new" className="h-full col-span-full">
+            <div className="h-full min-h-[220px] rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-3 p-6 group hover:border-primary/50 transition-colors bg-white/50">
+              <div className="size-12 rounded-full bg-secondary flex items-center justify-center group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                <Plus className="size-6" />
+              </div>
+              <div className="text-center">
+                <p className="font-headline font-bold">New Automation</p>
+                <p className="text-sm text-muted-foreground">Add your first keyword trigger</p>
+              </div>
             </div>
-            <div className="text-center">
-              <p className="font-headline font-bold">New Automation</p>
-              <p className="text-sm text-muted-foreground">Add another keyword trigger</p>
-            </div>
-          </div>
-        </Link>
+          </Link>
+        )}
       </div>
     </div>
   )

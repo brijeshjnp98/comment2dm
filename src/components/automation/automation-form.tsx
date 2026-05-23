@@ -1,7 +1,7 @@
-
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -13,7 +13,8 @@ import {
   Link as LinkIcon,
   MessageSquare,
   Hash,
-  Loader2
+  Loader2,
+  CheckCircle2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -31,6 +32,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import Link from "next/link"
 import { aiDmResponseGenerator } from "@/ai/flows/ai-dm-response-generator"
+import { useAuth } from "@/lib/auth-provider"
+import { createAutomation } from "@/lib/firestore-service"
 
 const automationSchema = z.object({
   keywords: z.string().min(1, "At least one keyword is required"),
@@ -42,7 +45,11 @@ const automationSchema = z.object({
 type AutomationFormValues = z.infer<typeof automationSchema>
 
 export function AutomationForm() {
+  const router = useRouter()
+  const { appUser } = useAuth()
   const [isGenerating, setIsGenerating] = React.useState(false)
+  const [isSaving, setIsSaving] = React.useState(false)
+  const [success, setSuccess] = React.useState(false)
   
   const form = useForm<AutomationFormValues>({
     resolver: zodResolver(automationSchema),
@@ -81,9 +88,41 @@ export function AutomationForm() {
     }
   }
 
-  function onSubmit(data: AutomationFormValues) {
-    console.log("Submitting automation:", data)
-    // Here we would call a server action or API
+  async function onSubmit(data: AutomationFormValues) {
+    if (!appUser) return
+    setIsSaving(true)
+    try {
+      const keywordList = data.keywords.split(",").map(k => k.trim()).filter(Boolean)
+      await createAutomation({
+        userId: appUser.uid,
+        keywords: keywordList,
+        replyMessage: data.replyMessage,
+        targetUrl: data.targetUrl,
+        campaignGoal: data.campaignGoal,
+        active: true,
+        totalSent: 0,
+      })
+      setSuccess(true)
+      setTimeout(() => router.push("/dashboard/automations"), 1500)
+    } catch (error) {
+      console.error("Failed to save automation", error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  if (success) {
+    return (
+      <div className="max-w-3xl mx-auto pb-12 animate-in fade-in duration-500">
+        <div className="flex flex-col items-center justify-center py-20">
+          <div className="size-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
+            <CheckCircle2 className="size-8 text-emerald-600" />
+          </div>
+          <h2 className="text-2xl font-headline font-bold">Automation Created!</h2>
+          <p className="text-muted-foreground mt-2">Your keyword trigger is now active.</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -223,8 +262,13 @@ export function AutomationForm() {
             <Button variant="outline" className="rounded-full px-8" asChild>
               <Link href="/dashboard/automations">Cancel</Link>
             </Button>
-            <Button type="submit" className="bg-primary rounded-full px-8 shadow-lg shadow-primary/20">
-              <Save className="mr-2 size-4" /> Save Automation
+            <Button type="submit" className="bg-primary rounded-full px-8 shadow-lg shadow-primary/20" disabled={isSaving}>
+              {isSaving ? (
+                <Loader2 className="mr-2 size-4 animate-spin" />
+              ) : (
+                <Save className="mr-2 size-4" />
+              )}
+              Save Automation
             </Button>
           </div>
         </form>
