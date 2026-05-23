@@ -5,16 +5,3 @@ runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.
   maxInstances: 1
-
-# Environment variables for App Hosting runtime
-env:
-  - name: INSTAGRAM_APP_ID
-    value: "974866094951698"
-  - name: INSTAGRAM_APP_SECRET
-    value: "5bf67e7833ec80f14fab3c3a9fded9d9"
-  - name: NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI
-    value: "https://comment2dm--comment2dm-1309a.us-east4.hosted.app/api/auth/instagram/callback"
-  - name: WEBHOOK_SECRET
-    value: "comment2dm-webhook-secret"
-  - name: GEMINI_API_KEY
-    value: "AIzaSyBX0NhXRl9Fmri1L7L7Yu0W_x-t3JmVjT8"
