@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { getAdminDb } from "@/lib/firebase-admin"
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code")
@@ -125,6 +126,32 @@ export async function GET(req: NextRequest) {
       igProfilePic = igProfile.profile_picture_url || ""
     } catch (e) {
       console.log("Could not fetch Instagram profile info")
+    }
+
+    // Step 5.5: Save connection details directly to Firestore via Admin SDK
+    const state = req.nextUrl.searchParams.get("state")
+    if (state && state.length > 5) {
+      try {
+        const dbAdmin = getAdminDb()
+        
+        await dbAdmin.collection("instagram_tokens").doc(state).set({
+          accessToken: longLivedToken,
+          pageToken: connectedPageToken || "",
+          businessId: igBusinessId,
+          fbPageId: connectedPageId,
+          connectedAt: new Date(),
+        })
+
+        await dbAdmin.collection("users").doc(state).update({
+          instagramConnected: true,
+          instagramHandle: igUsername || igBusinessId,
+          instagramProfilePic: igProfilePic || null,
+        })
+        
+        console.log(`[OAuth callback] Successfully wrote Instagram token to Firestore for user: ${state}`)
+      } catch (firestoreErr) {
+        console.error("[OAuth callback] Firestore write error:", firestoreErr)
+      }
     }
 
     // Step 6: Redirect back with connection data

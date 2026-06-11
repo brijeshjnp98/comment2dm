@@ -25,6 +25,10 @@ export interface AutomationData {
   active: boolean
   createdAt?: Date
   totalSent: number
+  postId?: string
+  postMediaUrl?: string
+  postCaption?: string
+  postPermalink?: string
 }
 
 export interface ActivityLogData {

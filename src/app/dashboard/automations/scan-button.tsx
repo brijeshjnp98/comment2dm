@@ -253,6 +253,11 @@ export function ScanButton() {
         const commentText = (comment.text || "").toLowerCase()
 
         for (const auto of activeAutomations) {
+          // Respect post-specific trigger
+          if (auto.postId && auto.postId !== "all" && auto.postId !== comment.postId) {
+            continue
+          }
+
           const matchedKeyword = auto.keywords.find((kw: string) =>
             commentText.includes(kw.toLowerCase())
           )

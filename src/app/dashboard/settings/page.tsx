@@ -64,37 +64,39 @@ export default function SettingsPage() {
         return
       }
 
-      if (status === "success" && username && appUser) {
+      if (status === "success" && appUser) {
         setConnecting(true)
         try {
-          // Fetch the token from the secure cookie endpoint
-          const tokenRes = await fetch("/api/auth/instagram/token")
-          const tokenData = await tokenRes.json()
-
-          if (!tokenRes.ok || !tokenData.accessToken) {
-            setConnectionError("Could not retrieve access token. Please try connecting again.")
-            router.replace("/dashboard/settings")
-            return
+          // Fallback client-side save (if cookie is available)
+          try {
+            const tokenRes = await fetch("/api/auth/instagram/token")
+            if (tokenRes.ok) {
+              const tokenData = await tokenRes.json()
+              if (tokenData.accessToken) {
+                await updateDoc(doc(db, "users", appUser.uid), {
+                  instagramConnected: true,
+                  instagramHandle: username || appUser.instagramHandle || "",
+                  instagramProfilePic: profilePic || null,
+                })
+                await setDoc(doc(db, "instagram_tokens", appUser.uid), {
+                  accessToken: tokenData.accessToken,
+                  pageToken: tokenData.pageToken || "",
+                  businessId: businessId || "",
+                  fbPageId: pageId || "",
+                  connectedAt: new Date(),
+                })
+              }
+            }
+          } catch (cookieErr) {
+            console.log("Client fallback token fetch skipped/failed:", cookieErr)
           }
 
-          // Save to Firestore
-          await updateDoc(doc(db, "users", appUser.uid), {
-            instagramConnected: true,
-            instagramHandle: username,
-            instagramProfilePic: profilePic || null,
-          })
-          await setDoc(doc(db, "instagram_tokens", appUser.uid), {
-            accessToken: tokenData.accessToken,
-            pageToken: tokenData.pageToken || "",
-            businessId: businessId || "",
-            fbPageId: pageId || "",
-            connectedAt: new Date(),
-          })
+          // Fetch the latest user connection status from Firestore
           await refreshAppUser()
           setConnectionSuccess(true)
           router.replace("/dashboard/settings")
         } catch (err) {
-          console.error("Failed to save Instagram connection", err)
+          console.error("Failed to save Instagram connection:", err)
           setConnectionError("Failed to save connection. Please try again.")
           router.replace("/dashboard/settings")
         } finally {
@@ -130,9 +132,10 @@ export default function SettingsPage() {
   }
 
   async function handleConnectInstagram() {
+    if (!appUser) return
     setConnectionError("")
     setConnectionSuccess(false)
-    window.location.href = "/api/auth/instagram/connect"
+    window.location.href = `/api/auth/instagram/connect?userId=${appUser.uid}`
   }
 
   async function handleManualConnect() {

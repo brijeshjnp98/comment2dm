@@ -12,7 +12,8 @@ import {
   ExternalLink,
   MessageCircle,
   Hash,
-  Loader2
+  Loader2,
+  Instagram
 } from "lucide-react"
 import {
   Card,
@@ -154,6 +155,38 @@ export default function AutomationsPage() {
               </DropdownMenu>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Instagram Specific Post Preview if applicable */}
+              {item.postId && item.postId !== "all" && (
+                <div className="flex items-center gap-2.5 p-2 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100/80 transition-colors">
+                  <div className="size-10 relative bg-muted rounded-lg overflow-hidden shrink-0 border border-slate-200">
+                    {item.postMediaUrl ? (
+                      <img src={item.postMediaUrl} alt="Post thumbnail" className="object-cover w-full h-full" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-secondary">
+                        <Instagram className="size-4 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] uppercase font-bold text-primary tracking-wider">Specific Post</p>
+                    <p className="text-xs text-muted-foreground truncate leading-relaxed mt-0.5">
+                      {item.postCaption || "No caption"}
+                    </p>
+                  </div>
+                  {item.postPermalink && (
+                    <a
+                      href={item.postPermalink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="p-1 hover:bg-white rounded-lg text-muted-foreground hover:text-primary transition-colors shrink-0"
+                      title="View post on Instagram"
+                    >
+                      <ExternalLink className="size-3.5" />
+                    </a>
+                  )}
+                </div>
+              )}
+
               <div className="flex items-start gap-3 bg-secondary/30 p-3 rounded-xl">
                 <MessageCircle className="size-4 text-muted-foreground mt-1 shrink-0" />
                 <p className="text-sm text-foreground line-clamp-3 leading-relaxed italic">
@@ -167,10 +200,15 @@ export default function AutomationsPage() {
               </div>
 
               <div className="flex items-center justify-between pt-2">
-                <div className="flex items-center gap-1.5">
-                  <Badge variant={item.active ? "default" : "secondary"}>
-                    {item.active ? "Active" : "Paused"}
-                  </Badge>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant={item.active ? "default" : "secondary"}>
+                      {item.active ? "Active" : "Paused"}
+                    </Badge>
+                    <Badge variant="outline" className={item.postId && item.postId !== "all" ? "bg-purple-50 text-purple-700 border-purple-200/60 text-[10px] px-2 py-0.5 font-semibold" : "bg-blue-50 text-blue-700 border-blue-200/60 text-[10px] px-2 py-0.5 font-semibold"}>
+                      {item.postId && item.postId !== "all" ? "Post-Specific" : "Global Trigger"}
+                    </Badge>
+                  </div>
                   <span className="text-xs text-muted-foreground font-medium">{item.totalSent} sent</span>
                 </div>
               </div>

@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const clientId = process.env.INSTAGRAM_APP_ID
   const redirectUri = process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI
+  const userId = req.nextUrl.searchParams.get("userId") || ""
   
   if (!clientId) {
     return NextResponse.json(
@@ -36,7 +37,7 @@ export async function GET() {
       "instagram_basic",
       "instagram_manage_comments",
     ].join(","),
-    state: crypto.randomUUID(),
+    state: userId || crypto.randomUUID(),
   })
 
   const authUrl = `https://www.facebook.com/v22.0/dialog/oauth?${params.toString()}`

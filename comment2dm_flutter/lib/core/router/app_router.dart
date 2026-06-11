@@ -50,7 +50,12 @@ class AppRouter {
                 GoRoute(
                   path: '/dashboard/automations/new',
                   name: 'createAutomation',
-                  builder: (context, state) => const CreateAutomationScreen(),
+                  builder: (context, state) {
+                    final extra = state.extra as Map<String, dynamic>?;
+                    return CreateAutomationScreen(
+                      selectedPost: extra?['post'] as Map<String, dynamic>?,
+                    );
+                  },
                 ),
                 GoRoute(
                   path: '/dashboard/analytics',
