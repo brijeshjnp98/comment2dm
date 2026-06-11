@@ -5,3 +5,68 @@ runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.
   maxInstances: 1
+
+env:
+  - variable: GEMINI_API_KEY
+    value: AIzaSyBX0NhXRl9Fmri1L7L7Yu0W_x-t3JmVjT8
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: AIzaSyAGggETd1PSKgS51APH8TwuiVJpl7-hoEs
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: comment2dm-1309a.firebaseapp.com
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: comment2dm-1309a
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: comment2dm-1309a.firebasestorage.app
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "156636651859"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: 1:156636651859:web:e12c040e59459b2c0c81a6
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: INSTAGRAM_APP_ID
+    value: "1300067332172129"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: INSTAGRAM_APP_SECRET
+    value: afe9d5aa1e4f6b97f78731db4f2c8845
+    availability:
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI
+    value: https://comment2dm--comment2dm-1309a.us-east4.hosted.app/api/auth/instagram/callback
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: WEBHOOK_SECRET
+    value: comment2dm-webhook-secret
+    availability:
+      - RUNTIME

@@ -457,7 +457,7 @@ export default function SettingsPage() {
                     <li>Go to <strong>App Roles → Roles</strong> and add yourself as a test user (if in development mode)</li>
                     <li>Accept the test user invite by going to <a href="https://developers.facebook.com/settings/developer/requests/" target="_blank" className="text-primary hover:underline">your developer requests</a></li>
                     <li>Copy App ID and App Secret to your <code className="bg-muted px-1 rounded">.env.local</code></li>
-                    <li>In app settings, add this redirect URI: <code className="bg-muted px-1 rounded break-all">http://localhost:9002/api/auth/instagram/callback</code></li>
+                    <li>In app settings, add this redirect URI: <code className="bg-muted px-1 rounded break-all">https://comment2dm--comment2dm-1309a.us-east4.hosted.app/api/auth/instagram/callback</code></li>
                     <li>Go to <strong>Permissions → instagram_basic</strong> and add it to your app</li>
                     <li>Make sure your Instagram is a <strong>Professional account</strong> (Business/Creator) linked to a Facebook Page</li>
                   </ol>
