@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
     state: userId || crypto.randomUUID(),
   })
 
-  const authUrl = `https://api.instagram.com/oauth/authorize?${params.toString()}`
+  const authUrl = `https://www.instagram.com/oauth/authorize?${params.toString()}`
 
   return NextResponse.redirect(authUrl)
 }

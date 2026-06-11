@@ -3,7 +3,8 @@ import 'package:http/http.dart' as http;
 
 class InstagramService {
   static const String _graphApiBase = 'https://graph.facebook.com/v21.0';
-  static const String _instagramAuthUrl = 'https://api.instagram.com/oauth';
+  static const String _instagramAuthUrl = 'https://www.instagram.com/oauth';
+  static const String _instagramTokenUrl = 'https://api.instagram.com/oauth';
 
   // Instagram OAuth - Step 1: Get authorization URL
   String getAuthorizationUrl(String clientId, String redirectUri) {
@@ -25,7 +26,7 @@ class InstagramService {
     String code,
   ) async {
     final response = await http.post(
-      Uri.parse('$_instagramAuthUrl/access_token'),
+      Uri.parse('$_instagramTokenUrl/access_token'),
       body: {
         'client_id': clientId,
         'client_secret': clientSecret,
