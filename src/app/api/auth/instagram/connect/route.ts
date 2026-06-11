@@ -19,28 +19,23 @@ export async function GET(req: NextRequest) {
     )
   }
 
-  // Facebook Login OAuth — full set of permissions needed for Instagram DM automation
-  // instagram_basic: read media & comments
-  // instagram_manage_comments: interact with comments
-  // pages_show_list: list user's pages
-  // pages_read_engagement: read page engagement data
-  // pages_manage_metadata: subscribe pages to webhooks
-  // pages_messaging: send DMs via page (needed for Instagram DMs)
+  // Instagram Login for Business OAuth - scopes required for Instagram comment and DM automation:
+  // instagram_business_basic: profile info and media
+  // instagram_business_manage_comments: read/reply to comments
+  // instagram_business_manage_messages: send automated DMs
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: "code",
     scope: [
-      "pages_show_list",
-      "pages_read_engagement",
-      "pages_manage_metadata",
-      "instagram_basic",
-      "instagram_manage_comments",
+      "instagram_business_basic",
+      "instagram_business_manage_messages",
+      "instagram_business_manage_comments",
     ].join(","),
     state: userId || crypto.randomUUID(),
   })
 
-  const authUrl = `https://www.facebook.com/v22.0/dialog/oauth?${params.toString()}`
+  const authUrl = `https://api.instagram.com/oauth/authorize?${params.toString()}`
 
   return NextResponse.redirect(authUrl)
 }

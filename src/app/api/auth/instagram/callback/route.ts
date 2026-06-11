@@ -16,119 +16,68 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Step 1: Exchange code for Facebook access token
-    const tokenResponse = await fetch(
-      `https://graph.facebook.com/v22.0/oauth/access_token` +
-      `?client_id=${process.env.INSTAGRAM_APP_ID}` +
-      `&client_secret=${process.env.INSTAGRAM_APP_SECRET}` +
-      `&redirect_uri=${encodeURIComponent(process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI!)}` +
-      `&code=${code}`
-    )
+    // Step 1: Exchange authorization code for Instagram access token
+    const formParams = new URLSearchParams()
+    formParams.append("client_id", process.env.INSTAGRAM_APP_ID!)
+    formParams.append("client_secret", process.env.INSTAGRAM_APP_SECRET!)
+    formParams.append("grant_type", "authorization_code")
+    formParams.append("redirect_uri", process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI!)
+    formParams.append("code", code)
+
+    const tokenResponse = await fetch("https://api.instagram.com/oauth/access_token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: formParams.toString(),
+    })
     const tokenData = await tokenResponse.json()
 
     if (!tokenData.access_token) {
       console.error("Token exchange failed:", JSON.stringify(tokenData))
-      const msg = tokenData.error?.message || "Token exchange failed"
+      const msg = tokenData.error_message || tokenData.error?.message || "Token exchange failed"
       return NextResponse.redirect(
         new URL(`/dashboard/settings?instagram=error&ig_error=${encodeURIComponent(msg)}`, req.url)
       )
     }
 
-    const fbAccessToken = tokenData.access_token
+    const shortLivedToken = tokenData.access_token
+    const igUserId = tokenData.user_id?.toString() || ""
 
-    // Step 2: Try to get a long-lived token (lasts ~60 days instead of ~1 hour)
-    let longLivedToken = fbAccessToken
+    // Step 2: Exchange short-lived token for a long-lived access token (lasts ~60 days)
+    let longLivedToken = shortLivedToken
     try {
       const llResponse = await fetch(
-        `https://graph.facebook.com/v22.0/oauth/access_token` +
-        `?grant_type=fb_exchange_token` +
-        `&client_id=${process.env.INSTAGRAM_APP_ID}` +
+        `https://graph.instagram.com/access_token` +
+        `?grant_type=ig_exchange_token` +
         `&client_secret=${process.env.INSTAGRAM_APP_SECRET}` +
-        `&fb_exchange_token=${fbAccessToken}`
+        `&access_token=${shortLivedToken}`
       )
       const llData = await llResponse.json()
       if (llData.access_token) {
         longLivedToken = llData.access_token
-        console.log("Got long-lived token (valid ~60 days)")
+        console.log("Got long-lived Instagram token (valid ~60 days)")
       }
     } catch (e) {
       console.log("Long-lived token exchange failed, using short-lived token")
     }
 
-    // Step 3: Get Facebook Pages connected to this user
-    const pagesResponse = await fetch(
-      `https://graph.facebook.com/v22.0/me/accounts?access_token=${longLivedToken}`
-    )
-    const pagesData = await pagesResponse.json()
-
-    if (pagesData.error) {
-      console.error("Pages fetch error:", JSON.stringify(pagesData.error))
-      return NextResponse.redirect(
-        new URL(`/dashboard/settings?instagram=error&ig_error=${encodeURIComponent(pagesData.error.message)}`, req.url)
-      )
-    }
-
-    if (!pagesData.data || pagesData.data.length === 0) {
-      console.error("No Facebook pages found for this user")
-      return NextResponse.redirect(
-        new URL(
-          `/dashboard/settings?instagram=error&ig_error=${encodeURIComponent("No Facebook Page found. Make sure you have a Facebook Page linked to your account.")}`,
-          req.url
-        )
-      )
-    }
-
-    // Step 4: Search through all pages for one with an Instagram Business Account
-    let igBusinessId = ""
+    // Step 3: Get Instagram profile info
     let igUsername = ""
     let igProfilePic = ""
-    let connectedPageId = ""
-    let connectedPageToken = ""
-
-    for (const page of pagesData.data) {
-      try {
-        const igResponse = await fetch(
-          `https://graph.facebook.com/v22.0/${page.id}` +
-          `?fields=instagram_business_account&access_token=${page.access_token}`
-        )
-        const igData = await igResponse.json()
-
-        if (igData.instagram_business_account) {
-          igBusinessId = igData.instagram_business_account.id
-          connectedPageId = page.id
-          connectedPageToken = page.access_token
-          console.log(`Found Instagram Business Account on page "${page.name}" (ID: ${igBusinessId})`)
-          break
-        }
-      } catch (e) {
-        console.log(`Skipping page ${page.name}: ${e}`)
-      }
-    }
-
-    if (!igBusinessId) {
-      console.error("No Instagram Business account found on any page")
-      return NextResponse.redirect(
-        new URL(
-          `/dashboard/settings?instagram=error&ig_error=${encodeURIComponent("No Instagram Business/Creator account linked to any of your Facebook Pages. Go to Instagram Settings → Account → Linked Accounts → Facebook and connect to your Page.")}`,
-          req.url
-        )
-      )
-    }
-
-    // Step 5: Get Instagram profile info
     try {
       const igProfileResponse = await fetch(
-        `https://graph.facebook.com/v22.0/${igBusinessId}` +
+        `https://graph.facebook.com/v22.0/${igUserId}` +
         `?fields=username,name,profile_picture_url&access_token=${longLivedToken}`
       )
       const igProfile = await igProfileResponse.json()
       igUsername = igProfile.username || ""
       igProfilePic = igProfile.profile_picture_url || ""
     } catch (e) {
-      console.log("Could not fetch Instagram profile info")
+      console.log("Could not fetch Instagram profile info", e)
     }
 
-    // Step 5.5: Save connection details directly to Firestore via Admin SDK
+    // Step 4: Save connection details directly to Firestore via Admin SDK
     const state = req.nextUrl.searchParams.get("state")
     if (state && state.length > 5) {
       try {
@@ -136,15 +85,15 @@ export async function GET(req: NextRequest) {
         
         await dbAdmin.collection("instagram_tokens").doc(state).set({
           accessToken: longLivedToken,
-          pageToken: connectedPageToken || "",
-          businessId: igBusinessId,
-          fbPageId: connectedPageId,
+          pageToken: "", // No page token needed for direct Instagram Business Login
+          businessId: igUserId,
+          fbPageId: "", // No page ID needed for direct Instagram Business Login
           connectedAt: new Date(),
         })
 
         await dbAdmin.collection("users").doc(state).update({
           instagramConnected: true,
-          instagramHandle: igUsername || igBusinessId,
+          instagramHandle: igUsername || igUserId,
           instagramProfilePic: igProfilePic || null,
         })
         
@@ -154,18 +103,17 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Step 6: Redirect back with connection data
-    // We pass minimal info in URL and the token via a short-lived secure httpOnly cookie
+    // Step 5: Redirect back with connection data
     const redirectUrl = new URL("/dashboard/settings", req.url)
     redirectUrl.searchParams.set("instagram", "success")
-    redirectUrl.searchParams.set("ig_username", igUsername || igBusinessId)
-    redirectUrl.searchParams.set("ig_business_id", igBusinessId)
-    redirectUrl.searchParams.set("ig_page_id", connectedPageId)
+    redirectUrl.searchParams.set("ig_username", igUsername || igUserId)
+    redirectUrl.searchParams.set("ig_business_id", igUserId)
+    redirectUrl.searchParams.set("ig_page_id", "")
     if (igProfilePic) {
       redirectUrl.searchParams.set("ig_profile_pic", igProfilePic)
     }
 
-    // Set the token in a secure httpOnly cookie (expires in 5 minutes — just enough to save it)
+    // Set the token in a secure httpOnly cookie (expires in 5 minutes)
     const response = NextResponse.redirect(redirectUrl)
     response.cookies.set("ig_temp_token", longLivedToken, {
       httpOnly: true,
@@ -174,8 +122,8 @@ export async function GET(req: NextRequest) {
       maxAge: 300, // 5 minutes
       path: "/",
     })
-    // Also store the page token
-    response.cookies.set("ig_temp_page_token", connectedPageToken, {
+    // Set a blank page token cookie to avoid clearing cookie bugs
+    response.cookies.set("ig_temp_page_token", "", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
